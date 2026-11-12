@@ -1,0 +1,27 @@
+[package]
+name = "content-artifacts"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Private content-addressed artifact storage, manifests, and verified read observations"
+keywords = ["artifact", "content-addressed", "sha256", "storage"]
+categories = ["filesystem", "data-structures"]
+
+[dependencies]
+hex = "=0.4.3"
+serde = { version = "=1.0.228", features = ["derive"] }
+serde_json = { version = "=1.0.151", features = ["float_roundtrip", "unbounded_depth"] }
+sha2 = "=0.10.9"
+thiserror = "=2.0.20"
+uuid = { version = "=1.26.1", features = ["v4"] }
+
+[dev-dependencies]
+tempfile = "=3.27.0"
+
+[lints.rust]
+unsafe_code = "forbid"
+missing_docs = "warn"
+
+[lints.clippy]
+all = "warn"

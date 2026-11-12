@@ -32,7 +32,6 @@ checksum = "4e7648175b45a9a48536d676f68d918270699102aa8dab5496df06904c914600"
 [[package]]
 name = "content-artifacts"
 version = "0.1.0"
-source = "git+https://github.com/nplongx/content-artifacts?rev=f01210cfaed5e4c8310a3afca1334b070586038e#f01210cfaed5e4c8310a3afca1334b070586038e"
 dependencies = [
  "hex",
  "serde",
@@ -162,6 +161,22 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3eaf3ede3fee6db1a4c2ee091bf8a8b4dccdc6d17f656fb07896ee72867612f2"
 
 [[package]]
+name = "linux-execution-sandbox"
+version = "0.2.0"
+dependencies = [
+ "content-artifacts",
+ "hex",
+ "libc",
+ "rustix",
+ "serde",
+ "serde_json",
+ "sha2",
+ "tempfile",
+ "thiserror",
+ "uuid",
+]
+
+[[package]]
 name = "linux-raw-sys"
 version = "0.12.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -208,22 +223,6 @@ name = "r-efi"
 version = "6.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f8dcc9c7d52a811697d2151c701e0d08956f92b0e24136cf4cf27b57a6a0d9bf"
-
-[[package]]
-name = "runalith-linux-sandbox"
-version = "0.1.0"
-dependencies = [
- "content-artifacts",
- "hex",
- "libc",
- "rustix",
- "serde",
- "serde_json",
- "sha2",
- "tempfile",
- "thiserror",
- "uuid",
-]
 
 [[package]]
 name = "rustix"

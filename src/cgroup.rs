@@ -26,7 +26,7 @@ pub struct ResourceLimits {
     /// Maximum number of processes/threads in the execution cgroup.
     pub pids_max: u64,
     /// Maximum writable tmpfs capacity exposed at `/tmp` and
-    /// `/runalith-scratch`. Workspace storage additionally requires an
+    /// `/sandbox-scratch`. Workspace storage additionally requires an
     /// operator-enforced filesystem/project quota.
     pub scratch_max_bytes: u64,
 }
@@ -44,7 +44,7 @@ impl Default for ResourceLimits {
 }
 
 impl ResourceLimits {
-    /// Load bounded values from `RUNALITH_SANDBOX_*` environment variables.
+    /// Load bounded values from `LINUX_EXECUTION_SANDBOX_*` environment variables.
     pub fn from_env() -> Result<Self, CgroupError> {
         fn number(name: &'static str, default: u64) -> Result<u64, CgroupError> {
             match std::env::var(name) {
@@ -58,11 +58,11 @@ impl ResourceLimits {
             }
         }
         let limits = Self {
-            memory_max_bytes: number("RUNALITH_SANDBOX_MEMORY_MAX_BYTES", 1_073_741_824)?,
-            cpu_quota_micros: number("RUNALITH_SANDBOX_CPU_QUOTA_MICROS", 100_000)?,
-            cpu_period_micros: number("RUNALITH_SANDBOX_CPU_PERIOD_MICROS", 100_000)?,
-            pids_max: number("RUNALITH_SANDBOX_PIDS_MAX", 64)?,
-            scratch_max_bytes: number("RUNALITH_SANDBOX_SCRATCH_MAX_BYTES", 134_217_728)?,
+            memory_max_bytes: number("LINUX_EXECUTION_SANDBOX_MEMORY_MAX_BYTES", 1_073_741_824)?,
+            cpu_quota_micros: number("LINUX_EXECUTION_SANDBOX_CPU_QUOTA_MICROS", 100_000)?,
+            cpu_period_micros: number("LINUX_EXECUTION_SANDBOX_CPU_PERIOD_MICROS", 100_000)?,
+            pids_max: number("LINUX_EXECUTION_SANDBOX_PIDS_MAX", 64)?,
+            scratch_max_bytes: number("LINUX_EXECUTION_SANDBOX_SCRATCH_MAX_BYTES", 134_217_728)?,
         };
         limits.validate()?;
         Ok(limits)
@@ -122,7 +122,7 @@ impl CgroupV2Config {
         // subsequent lookups must continue to use the delegated parent.
         if root
             .file_name()
-            .is_some_and(|name| name == "runalith-manager")
+            .is_some_and(|name| name == "sandbox-manager")
         {
             root.pop();
         }
@@ -162,7 +162,7 @@ impl CgroupV2Config {
         let root_processes = fs::read_to_string(self.root.join("cgroup.procs"))?;
         if !root_processes.trim().is_empty() {
             return Err(CgroupError::Unavailable(
-                "delegated cgroup parent contains processes; configure systemd DelegateSubgroup=runalith-manager to satisfy cgroup v2 no-internal-process rule".into(),
+                "delegated cgroup parent contains processes; configure systemd DelegateSubgroup=sandbox-manager to satisfy cgroup v2 no-internal-process rule".into(),
             ));
         }
         let mut subtree = fs::read_to_string(self.root.join("cgroup.subtree_control"))?;
@@ -200,7 +200,7 @@ impl CgroupV2Config {
 
         let path = self
             .root
-            .join(format!("runalith-{}", Uuid::new_v4().simple()));
+            .join(format!("sandbox-{}", Uuid::new_v4().simple()));
         fs::create_dir(&path).map_err(|error| {
             CgroupError::Unavailable(format!("cannot create delegated execution cgroup: {error}"))
         })?;
@@ -299,7 +299,7 @@ impl ExecutionCgroup {
             .path
             .file_name()
             .and_then(|name| name.to_str())
-            .filter(|name| name.starts_with("runalith-"))
+            .filter(|name| name.starts_with("sandbox-"))
             .ok_or_else(|| {
                 CgroupError::Unavailable("execution cgroup has no valid opaque ID".into())
             })?
@@ -368,7 +368,7 @@ mod tests {
 
     fn host_cgroup_tests_enabled() -> bool {
         matches!(
-            std::env::var("RUNALITH_SANDBOX_RUN_HOST_CGROUP_TESTS").as_deref(),
+            std::env::var("LINUX_EXECUTION_SANDBOX_RUN_HOST_CGROUP_TESTS").as_deref(),
             Ok("1")
         )
     }
@@ -436,7 +436,7 @@ mod tests {
     #[test]
     fn cleanup_issues_cgroup_kill_before_removing_the_execution_cgroup() {
         let directory = tempfile::tempdir().unwrap();
-        let execution_path = directory.path().join("runalith-test");
+        let execution_path = directory.path().join("sandbox-test");
         fs::create_dir(&execution_path).unwrap();
         fs::write(execution_path.join("cgroup.kill"), "").unwrap();
         fs::write(
@@ -468,7 +468,7 @@ mod tests {
     fn delegated_execution_cgroup_receives_exact_cpu_memory_swap_and_pid_limits() {
         if !host_cgroup_tests_enabled() {
             eprintln!(
-                "skipped host cgroup test; set RUNALITH_SANDBOX_RUN_HOST_CGROUP_TESTS=1 on a disposable delegated host"
+                "skipped host cgroup test; set LINUX_EXECUTION_SANDBOX_RUN_HOST_CGROUP_TESTS=1 on a disposable delegated host"
             );
             return;
         }
@@ -489,7 +489,7 @@ mod tests {
         };
         if !processes.trim().is_empty() {
             eprintln!(
-                "skipped delegated cgroup integration test: parent is not empty; run under systemd DelegateSubgroup=runalith-manager"
+                "skipped delegated cgroup integration test: parent is not empty; run under systemd DelegateSubgroup=sandbox-manager"
             );
             return;
         }
@@ -529,7 +529,7 @@ mod tests {
 
         if !host_cgroup_tests_enabled() {
             eprintln!(
-                "skipped host cgroup test; set RUNALITH_SANDBOX_RUN_HOST_CGROUP_TESTS=1 on a disposable delegated host"
+                "skipped host cgroup test; set LINUX_EXECUTION_SANDBOX_RUN_HOST_CGROUP_TESTS=1 on a disposable delegated host"
             );
             return;
         }

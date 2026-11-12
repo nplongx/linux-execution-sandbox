@@ -5,6 +5,9 @@
 //! read-only, environment is cleared, and process lifetime is bounded. This is
 //! a Linux backend; unsupported hosts must provide another audited backend.
 
+/// Content-addressed storage used for sandbox write receipts.
+pub use content_artifacts::{ArtifactError, ArtifactStore, StoredArtifact};
+
 pub mod cgroup;
 pub mod workspace_write;
 
@@ -420,7 +423,7 @@ impl BubblewrapSandbox {
         command
             .arg("-c")
             .arg(CGROUP_LAUNCHER_SCRIPT)
-            .arg("runalith-cgroup-launcher")
+            .arg("linux-sandbox-launcher")
             .arg(cgroup.procs_path())
             .arg(&self.workspace_root)
             .arg(format!(
@@ -458,9 +461,9 @@ impl BubblewrapSandbox {
             "--tmpfs",
             "/tmp",
         ]);
-        command.args(["--dir", "/workspace", "--dir", "/runalith-scratch"]);
+        command.args(["--dir", "/workspace", "--dir", "/sandbox-scratch"]);
         command.args(["--bind-fd", "3", "/workspace"]);
-        command.args(["--size", &scratch_bytes, "--tmpfs", "/runalith-scratch"]);
+        command.args(["--size", &scratch_bytes, "--tmpfs", "/sandbox-scratch"]);
         for root in &self.executable_roots {
             if root.starts_with("/usr")
                 || ["/bin", "/sbin", "/lib", "/lib64"]
@@ -496,10 +499,10 @@ impl BubblewrapSandbox {
             "/usr/bin:/bin:/usr/sbin:/sbin",
             "--setenv",
             "HOME",
-            "/runalith-scratch",
+            "/sandbox-scratch",
             "--setenv",
             "TMPDIR",
-            "/runalith-scratch",
+            "/sandbox-scratch",
         ]);
         for (key, value) in &request.environment {
             command.args(["--setenv", key, value]);
@@ -1015,7 +1018,7 @@ mod tests {
     #[test]
     fn cgroup_cleanup_failure_does_not_block_waiting_for_live_child() {
         let directory = tempfile::tempdir().unwrap();
-        let cgroup_path = directory.path().join("runalith-execution");
+        let cgroup_path = directory.path().join("sandbox-execution");
         fs::create_dir(&cgroup_path).unwrap();
         fs::write(cgroup_path.join("cgroup.kill"), "").unwrap();
         // Missing cgroup.events makes the authoritative emptiness check fail.
@@ -1032,11 +1035,11 @@ mod tests {
 
     fn delegated_test_cgroup() -> Option<CgroupV2Config> {
         if !matches!(
-            std::env::var("RUNALITH_SANDBOX_RUN_HOST_CGROUP_TESTS").as_deref(),
+            std::env::var("LINUX_EXECUTION_SANDBOX_RUN_HOST_CGROUP_TESTS").as_deref(),
             Ok("1")
         ) {
             eprintln!(
-                "skipped host Bubblewrap/cgroup test; set RUNALITH_SANDBOX_RUN_HOST_CGROUP_TESTS=1 on a disposable delegated host"
+                "skipped host Bubblewrap/cgroup test; set LINUX_EXECUTION_SANDBOX_RUN_HOST_CGROUP_TESTS=1 on a disposable delegated host"
             );
             return None;
         }
@@ -1352,7 +1355,7 @@ mod tests {
         let process = observed.process.expect("cgroup stop observation missing");
         assert!(process.process_id > 0);
         assert!(process.started_at_unix_ms <= process.finished_at_unix_ms);
-        assert!(process.cgroup.cgroup_id.starts_with("runalith-"));
+        assert!(process.cgroup.cgroup_id.starts_with("sandbox-"));
         assert!(
             process.cgroup.kill_requested_at_unix_ms
                 <= process.cgroup.populated_zero_observed_at_unix_ms
@@ -1389,7 +1392,7 @@ mod tests {
                 executable: dd,
                 arguments: vec![
                     "if=/dev/zero".into(),
-                    "of=/runalith-scratch/full".into(),
+                    "of=/sandbox-scratch/full".into(),
                     "bs=1048576".into(),
                     "count=8".into(),
                     "status=none".into(),

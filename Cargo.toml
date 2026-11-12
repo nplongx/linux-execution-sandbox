@@ -1,17 +1,18 @@
 [package]
-name = "runalith-linux-sandbox"
-version = "0.1.0"
+name = "linux-execution-sandbox"
+version = "0.2.0"
 edition = "2024"
 rust-version = "1.85"
 license = "MIT"
+publish = false
 description = "Fail-closed Linux Bubblewrap execution and capability-scoped workspace writes"
-repository = "https://github.com/nplongx/runalith-linux-sandbox"
+repository = "https://github.com/nplongx/linux-execution-sandbox"
 readme = "README.md"
 keywords = ["linux", "bubblewrap", "sandbox", "cgroup-v2"]
 categories = ["os", "development-tools"]
 
 [dependencies]
-content-artifacts = { version = "=0.1.0", git = "https://github.com/nplongx/content-artifacts", rev = "f01210cfaed5e4c8310a3afca1334b070586038e" }
+content-artifacts = { version = "=0.1.0", path = "vendor/content-artifacts" }
 hex = "=0.4.3"
 libc = "=0.2.189"
 rustix = { version = "=1.1.5", features = ["fs", "process"] }

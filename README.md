@@ -1,12 +1,21 @@
-# Runalith Linux Sandbox
+# Linux Execution Sandbox
 
-A Linux-only process and workspace mutation boundary extracted from Runalith.
+A standalone Linux process-isolation and workspace-mutation library.
 
 The crate combines three related capabilities:
 
 - Bubblewrap-based command execution with no direct-process fallback, network namespace isolation, read-only executable roots, one writable workspace, cleared environment, bounded arguments/input/output, timeouts, and cancellation.
 - Mandatory per-execution cgroup v2 CPU, memory, swap, and PID limits, with kernel-observed process-tree cleanup evidence.
 - Plan-scoped, expiring, one-use workspace-write capabilities with descriptor-anchored path checks, atomic replacement, content-addressed receipts, and crash recovery.
+
+## Install
+
+```toml
+[dependencies]
+linux-execution-sandbox = { git = "https://github.com/nplongx/linux-execution-sandbox", tag = "v0.2.0" }
+```
+
+All required source dependencies are vendored in this repository.
 
 ## Terminology
 
@@ -35,16 +44,16 @@ The default test suite never writes to the current host's delegated cgroup and d
 To run the cgroup/Bubblewrap integration tests, use a disposable Linux VM or dedicated CI worker with explicit systemd cgroup v2 delegation, Bubblewrap, and required utilities installed:
 
 ```sh
-RUNALITH_SANDBOX_RUN_HOST_CGROUP_TESTS=1 cargo test --locked
+LINUX_EXECUTION_SANDBOX_RUN_HOST_CGROUP_TESTS=1 cargo test --locked
 ```
 
 These tests create and remove temporary child cgroups and launch constrained processes inside them. Do not enable this variable on a production host.
 
 ## Dependencies
 
-The only Runalith crate dependency is [`content-artifacts`](https://github.com/nplongx/content-artifacts), pinned to an immutable Git revision. It stores workspace-write receipts and journals as content-addressed artifacts.
+Content-addressed receipt storage is included as an internally vendored source snapshot under `vendor/`, with its original license and source revision. The build has no sibling-package Git dependency and does not fetch code from another repository.
 
-The dependency is a Git dependency rather than a crates.io dependency. This crate currently targets Cargo Git dependencies; crates.io packaging requires `content-artifacts` to be published or vendored.
+Crates.io publication is disabled because the package intentionally resolves these components from local vendored paths. Consume it as a Git dependency.
 
 ## Build and test
 
@@ -61,7 +70,7 @@ GitHub Actions checks Rust 1.85 and stable. Host cgroup integration tests remain
 
 ## Provenance
 
-Extracted from `nplongx/runalith` at source commit `29c24cfa2b6ead5704d26cf2746bc384f2938b80`, from `rust/crates/runalith-sandbox`. The source dependency on `runalith-artifacts` is replaced with the pinned public `content-artifacts` repository. The standalone test default is additionally hardened to avoid host cgroup mutations unless explicitly opted in.
+Created from immutable source snapshot `29c24cfa2b6ead5704d26cf2746bc384f2938b80`. Required receipt-storage source is vendored locally. No parent workspace, service configuration, or application runtime is required.
 
 ## License
 

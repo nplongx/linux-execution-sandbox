@@ -281,7 +281,7 @@ fn recover_workspace_write_journal_locked(
             }
             receipt_store
                 .put(
-                    "application/vnd.runalith.workspace-write-receipt+json",
+                    "application/vnd.workspace-write-receipt+json",
                     &intent.receipt_bytes,
                 )
                 .map_err(|error| WorkspaceWriteError::Journal(error.to_string()))?;
@@ -554,10 +554,7 @@ impl WorkspaceWriteCapability {
             self.atomic_replace(&target, content, &path, base_sha256, &after_hash)?;
         }
         let artifact = receipt_store
-            .put(
-                "application/vnd.runalith.workspace-write-receipt+json",
-                &bytes,
-            )
+            .put("application/vnd.workspace-write-receipt+json", &bytes)
             .map_err(|source| WorkspaceWriteError::MutationUnreceipted {
                 path: path_string,
                 after_sha256: receipt.after_sha256.clone(),
@@ -734,7 +731,7 @@ impl WorkspaceWriteCapability {
                     WorkspaceWriteError::Policy("workspace target has no parent directory".into())
                 })?;
             let stable_target = parent_path.join(&target.file_name);
-            let temp = parent_path.join(format!(".runalith-write-{}", Uuid::new_v4().simple()));
+            let temp = parent_path.join(format!(".sandbox-write-{}", Uuid::new_v4().simple()));
             let mut options = OpenOptions::new();
             options.write(true).create_new(true);
             #[cfg(unix)]
@@ -838,7 +835,7 @@ impl WorkspaceWriteCapability {
         let root = target.root.as_ref().ok_or_else(|| {
             WorkspaceWriteError::Policy("workspace root descriptor is unavailable".into())
         })?;
-        let temp_name = format!(".runalith-write-{}", Uuid::new_v4().simple());
+        let temp_name = format!(".sandbox-write-{}", Uuid::new_v4().simple());
         let resolve =
             ResolveFlags::BENEATH | ResolveFlags::NO_SYMLINKS | ResolveFlags::NO_MAGICLINKS;
         let temp_fd = rustix::fs::openat2(
@@ -1459,7 +1456,7 @@ mod tests {
         let receipt_bytes = serde_json::to_vec(&receipt).unwrap();
         let artifact = store
             .put(
-                "application/vnd.runalith.workspace-write-receipt+json",
+                "application/vnd.workspace-write-receipt+json",
                 &receipt_bytes,
             )
             .unwrap();
@@ -1484,7 +1481,7 @@ mod tests {
         let receipt_bytes = serde_json::to_vec(&receipt).unwrap();
         let first = store
             .put(
-                "application/vnd.runalith.workspace-write-receipt+json",
+                "application/vnd.workspace-write-receipt+json",
                 &receipt_bytes,
             )
             .unwrap();
@@ -1493,7 +1490,7 @@ mod tests {
         assert_eq!(report.receipts_recovered, 1);
         let second = store
             .put(
-                "application/vnd.runalith.workspace-write-receipt+json",
+                "application/vnd.workspace-write-receipt+json",
                 &receipt_bytes,
             )
             .unwrap();
@@ -1553,7 +1550,7 @@ mod tests {
         let receipt_bytes = serde_json::to_vec(&receipt).unwrap();
         let artifact = store
             .put(
-                "application/vnd.runalith.workspace-write-receipt+json",
+                "application/vnd.workspace-write-receipt+json",
                 &receipt_bytes,
             )
             .unwrap();
@@ -1563,8 +1560,8 @@ mod tests {
     #[test]
     fn journal_lock_child_process_probe() {
         let (Ok(receipt_root), Ok(marker)) = (
-            std::env::var("RUNALITH_WORKSPACE_JOURNAL_PROBE_ROOT"),
-            std::env::var("RUNALITH_WORKSPACE_JOURNAL_PROBE_MARKER"),
+            std::env::var("LINUX_EXECUTION_SANDBOX_WORKSPACE_JOURNAL_PROBE_ROOT"),
+            std::env::var("LINUX_EXECUTION_SANDBOX_WORKSPACE_JOURNAL_PROBE_MARKER"),
         ) else {
             return;
         };
@@ -1593,8 +1590,14 @@ mod tests {
                 "workspace_write::tests::journal_lock_child_process_probe",
                 "--nocapture",
             ])
-            .env("RUNALITH_WORKSPACE_JOURNAL_PROBE_ROOT", &receipt_root)
-            .env("RUNALITH_WORKSPACE_JOURNAL_PROBE_MARKER", &marker)
+            .env(
+                "LINUX_EXECUTION_SANDBOX_WORKSPACE_JOURNAL_PROBE_ROOT",
+                &receipt_root,
+            )
+            .env(
+                "LINUX_EXECUTION_SANDBOX_WORKSPACE_JOURNAL_PROBE_MARKER",
+                &marker,
+            )
             .spawn()
             .unwrap();
 
@@ -1793,10 +1796,10 @@ mod tests {
     #[test]
     fn workspace_write_child_parent_replacement_probe() {
         let (Ok(workspace), Ok(ready), Ok(proceed), Ok(result)) = (
-            std::env::var("RUNALITH_WORKSPACE_RACE_ROOT"),
-            std::env::var("RUNALITH_WORKSPACE_RACE_READY"),
-            std::env::var("RUNALITH_WORKSPACE_RACE_PROCEED"),
-            std::env::var("RUNALITH_WORKSPACE_RACE_RESULT"),
+            std::env::var("LINUX_EXECUTION_SANDBOX_WORKSPACE_RACE_ROOT"),
+            std::env::var("LINUX_EXECUTION_SANDBOX_WORKSPACE_RACE_READY"),
+            std::env::var("LINUX_EXECUTION_SANDBOX_WORKSPACE_RACE_PROCEED"),
+            std::env::var("LINUX_EXECUTION_SANDBOX_WORKSPACE_RACE_RESULT"),
         ) else {
             return;
         };
@@ -1857,10 +1860,10 @@ mod tests {
                 "workspace_write::tests::workspace_write_child_parent_replacement_probe",
                 "--nocapture",
             ])
-            .env("RUNALITH_WORKSPACE_RACE_ROOT", &workspace)
-            .env("RUNALITH_WORKSPACE_RACE_READY", &ready)
-            .env("RUNALITH_WORKSPACE_RACE_PROCEED", &proceed)
-            .env("RUNALITH_WORKSPACE_RACE_RESULT", &result)
+            .env("LINUX_EXECUTION_SANDBOX_WORKSPACE_RACE_ROOT", &workspace)
+            .env("LINUX_EXECUTION_SANDBOX_WORKSPACE_RACE_READY", &ready)
+            .env("LINUX_EXECUTION_SANDBOX_WORKSPACE_RACE_PROCEED", &proceed)
+            .env("LINUX_EXECUTION_SANDBOX_WORKSPACE_RACE_RESULT", &result)
             .spawn()
             .unwrap();
 
@@ -1934,7 +1937,7 @@ mod tests {
                 .unwrap()
                 .file_name()
                 .to_string_lossy()
-                .starts_with(".runalith-write-")
+                .starts_with(".sandbox-write-")
         }));
     }
 
