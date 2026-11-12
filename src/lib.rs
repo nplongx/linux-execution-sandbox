@@ -1206,12 +1206,19 @@ mod tests {
         let directory = tempfile::tempdir().unwrap();
         let workspace = directory.path().join("workspace");
         let cgroup_root = directory.path().join("cgroup");
+        let bubblewrap = directory.path().join("bwrap");
         fs::create_dir(&workspace).unwrap();
         fs::create_dir(&cgroup_root).unwrap();
+        fs::write(&bubblewrap, "#!/bin/sh\nexit 1\n").unwrap();
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            fs::set_permissions(&bubblewrap, fs::Permissions::from_mode(0o700)).unwrap();
+        }
         fs::write(cgroup_root.join("cgroup.controllers"), "cpu memory pids\n").unwrap();
         fs::write(cgroup_root.join("cgroup.subtree_control"), "\n").unwrap();
         let result = BubblewrapSandbox::new(SandboxPolicy {
-            bubblewrap_binary: "/usr/bin/bwrap".into(),
+            bubblewrap_binary: bubblewrap,
             workspace_root: workspace,
             executable_roots: vec!["/usr".into()],
             allowed_environment_keys: BTreeSet::new(),
