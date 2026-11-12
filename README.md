@@ -8,6 +8,10 @@ The crate combines three related capabilities:
 - Mandatory per-execution cgroup v2 CPU, memory, swap, and PID limits, with kernel-observed process-tree cleanup evidence.
 - Plan-scoped, expiring, one-use workspace-write capabilities with descriptor-anchored path checks, atomic replacement, content-addressed receipts, and crash recovery.
 
+## Terminology
+
+See [TERMINOLOGY.md](TERMINOLOGY.md) for shared identifier, lifecycle, evidence, time-unit, and compatibility conventions.
+
 ## Security boundary
 
 This is security-sensitive infrastructure, not a security certification or a substitute for an independent sandbox audit. It must not be treated as safe for untrusted workloads merely because unit tests pass.
